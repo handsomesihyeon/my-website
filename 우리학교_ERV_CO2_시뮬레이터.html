@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우리반 ERV 환기 시뮬레이터</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --bg-main: #FFFFFF;
+            --card-bg: #F8FAFC;
+            --text-primary: #17212B;
+            --text-secondary: #738392;
+            --brand-blue: #367FA8;
+            --brand-blue-light: #EAF4FA;
+            --accent-red: #E76F68;
+            --accent-green: #2FA985;
+            --border-color: #E7EDF1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .dashboard-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .row-top {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.6fr;
+            gap: 20px;
+        }
+
+        .row-bottom {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .card.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            border-radius: 0;
+            padding: 30px;
+            background: var(--card-bg);
+        }
+
+        .card.fullscreen .visual-box {
+            height: calc(100% - 60px);
+            min-height: unset;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .card-header-action {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon-badge {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: var(--brand-blue-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-badge svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--brand-blue);
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .btn-mode-toggle {
+            background: #EEF2FF;
+            border: 1.5px solid var(--brand-blue);
+            color: var(--brand-blue);
+            border-radius: 10px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+
+        .btn-mode-toggle.off {
+            background: #FEF2F2;
+            border-color: #EF4444;
+            color: #EF4444;
+        }
+
+        .btn-expand {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+
+        .btn-expand:hover {
+            background: var(--border-color);
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            border-color: var(--brand-blue);
+            background: #FFFFFF;
+        }
+
+        .btn-run {
+            margin-top: auto;
+            width: 100%;
+            padding: 12px;
+            background: var(--brand-blue);
+            color: #FFFFFF;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0px 8px 16px rgba(67, 24, 255, 0.2);
+        }
+
+        .btn-run:hover {
+            background: #3311CC;
+        }
+
+        .visual-box {
+            width: 100%;
+            height: 100%;
+            min-height: 270px;
+            background: #FAFCFE;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .co2-chart-container {
+            position: relative;
+            flex: 1 0 420px;
+            min-height: 420px;
+            width: 100%;
+            margin-top: auto;
+        }
+
+        .stat-card {
+            background: var(--bg-main);
+            padding: 12px 14px;
+            border-radius: 12px;
+        }
+
+        .stat-card-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+
+        .stat-card-num {
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .c-red { color: var(--accent-red); }
+        .c-green { color: var(--accent-green); }
+        .c-blue { color: var(--brand-blue); }
+
+        .header-actions { display: flex; gap: 8px; }
+        .btn-secondary {
+            border: 1px solid var(--border-color); border-radius: 10px; padding: 9px 12px;
+            background: #fff; color: var(--text-primary); font-weight: 700; cursor: pointer;
+        }
+        .measurement-panel { margin: 0 0 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 12px; background: #FAFCFE; }
+        .measurement-panel p { font-size: 10px; line-height: 1.5; color: #64748B; margin-bottom: 7px; }
+        .measurement-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .measurement-actions input[type="file"] { min-width: 150px; max-width: 100%; font-size: 10px; }
+        #measurementStatus { font-size: 10px; color: #64748B; margin-top: 6px; }
+        .print-summary { display: none; }
+        .advanced-settings { margin: 4px 0 12px; border: 1px solid var(--border-color); border-radius: 10px; background: #FAFCFE; }
+        .advanced-settings summary { padding: 10px 12px; color: var(--brand-blue); font-size: 12px; font-weight: 800; cursor: pointer; list-style-position: inside; }
+        .advanced-settings[open] summary { border-bottom: 1px solid var(--border-color); }
+        .advanced-settings-content { padding: 10px 10px 0; }
+        .advanced-settings-content .input-group:last-child { margin-bottom: 10px; }
+        .field-note { display:block; margin-top:4px; font-size:10px; color:#64748B; }
+        .mechanism-note { margin:-6px 0 10px; color:#64748B; font-size:10px; line-height:1.5; }
+        .mechanism-note a { color:#4318FF; font-weight:700; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 12mm; }
+            body { padding: 0; background: #fff; color: #172033; }
+            .header { margin-bottom: 12px; }
+            .header-title { font-size: 22px; }
+            .header-actions, .dashboard-grid { display: none !important; }
+            .print-summary { display: block; border: 1px solid #CBD5E1; border-radius: 10px; padding: 16px; }
+            .print-summary h2 { font-size: 15px; margin: 14px 0 7px; }
+            .print-summary .report-lead { color: #475569; font-size: 11px; line-height: 1.5; }
+            .report-results { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .report-metric { border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px; }
+            .report-metric strong { display: block; font-size: 10px; color: #64748B; }
+            .report-metric span { display: block; margin-top: 3px; font-size: 17px; font-weight: 800; }
+            .report-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+            .report-table th, .report-table td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #E2E8F0; }
+            .report-table th { color: #64748B; font-weight: 700; width: 24%; }
+            .report-chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+            .report-chart-grid img { display: block; width: 100%; max-height: 210px; object-fit: contain; }
+            .report-footnote { margin-top: 10px; font-size: 9px; color: #475569; line-height: 1.5; }
+        }
+    
+        /* 원래 페이지 여백을 유지하면서 기류도와 분석 패널을 좌우로 배치 */
+        .row-bottom { grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.7fr); align-items: stretch; }
+        .scenario-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: 100%; }
+        .scenario-chart { min-width: 0; padding: 16px; border: 1px solid var(--border-color); border-radius: 16px; background: #FFFFFF; }
+        .scenario-chart-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 7px; margin-bottom: 5px; }
+        .scenario-chart-heading h3 { color: var(--text-primary); font-size: 14px; font-weight: 800; }
+        .scenario-tag { padding: 5px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; }
+        .general-tag { color: #4318FF; background: #F1EEFF; }
+        .erv-tag { color: #047857; background: #E7F8F1; }
+        .scenario-chart > p { min-height: 30px; margin-bottom: 8px; color: #64748B; font-size: 10px; line-height: 1.5; }
+        .scenario-plot { position: relative; width: 100%; height: 430px; }
+        .temperature-model-note { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 12px; color: #475569; background: #FAFCFE; font-size: 11px; line-height: 1.65; }
+        .temperature-model-note summary { color: var(--brand-blue); font-weight: 800; cursor: pointer; }
+        .temperature-model-note p { margin-top: 8px; }
+        .temperature-model-note code { color: #1D4ED8; font-size: 10px; }
+        .reference-links a { color: #2563EB; font-weight: 700; }
+        .dbpia-heat-note { margin-top: 9px; padding: 10px 12px; border-left: 3px solid #3B82F6; border-radius: 7px; background: #EFF6FF; color: #334155; }
+        .dbpia-heat-note a { color: #2563EB; font-weight: 800; }
+
+        .report-chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        .report-chart-grid figure { min-width: 0; }
+        .report-chart-grid figcaption { font-size: 9px; font-weight: 700; color: #475569; }
+        .report-chart-grid img { display: block; width: 100%; max-height: 210px; object-fit: contain; }
+        @media (max-width: 980px) { .row-bottom { grid-template-columns: 1fr; } .scenario-charts { grid-template-columns: 1fr; } .scenario-plot { height: 390px; } }
+        @media (max-width: 640px) { .header { padding-left: 12px; padding-right: 12px; } .scenario-chart { padding: 12px; } .scenario-plot { height: 340px; } }
+
+        /* Letters reference: airy white space, blue gradient hero, soft rounded cards */
+        body { padding: 18px 24px 44px; background: #FFFFFF; color: #17212B; }
+        .header { max-width: 1480px; height: 42px; margin: 0 auto 12px; gap: 18px; }
+        .brand { display: inline-flex; align-items: center; gap: 9px; color: inherit; text-decoration: none; }
+        .brand-mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; color: #fff; background: #78A6C8; font-size: 15px; font-weight: 800; }
+        .header-title { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; }
+        .nav-links { display: flex; align-items: center; justify-content: center; gap: 24px; margin-left: auto; }
+        .nav-links a { color: #667784; font-size: 11px; font-weight: 700; text-decoration: none; }
+        .nav-links a:hover { color: #347CA5; }
+        .header-actions { margin-left: 10px; }
+        .header .btn-secondary { padding: 8px 14px; border: 0; border-radius: 999px; color: #fff; background: #17212B; font-size: 11px; box-shadow: 0 5px 14px rgba(23,33,43,.12); }
+        .hero-banner { position: relative; isolation: isolate; overflow: hidden; max-width: 1480px; min-height: 240px; margin: 0 auto 54px; padding: 42px 24px 38px; border-radius: 28px; color: #fff; text-align: center; background: linear-gradient(165deg, #789FC1 0%, #A6C4DB 58%, #C8DFEC 100%); }
+        .hero-banner::before, .hero-banner::after { position: absolute; z-index: -1; content: ""; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; }
+        .hero-banner::before { width: 310px; height: 310px; left: -95px; top: -190px; }
+        .hero-banner::after { width: 390px; height: 390px; right: -120px; bottom: -300px; }
+        .hero-eyebrow { margin-bottom: 12px; color: rgba(255,255,255,.86); font-size: 10px; font-weight: 800; letter-spacing: 1.7px; text-transform: uppercase; }
+        .hero-banner h2 { max-width: 760px; margin: 0 auto 10px; font-size: clamp(28px, 4vw, 42px); line-height: 1.14; letter-spacing: -1.7px; }
+        .hero-banner p { max-width: 680px; margin: 0 auto 20px; color: rgba(255,255,255,.88); font-size: 12px; line-height: 1.7; }
+        .hero-actions { display: flex; justify-content: center; gap: 8px; }
+        .hero-button { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 0 16px; border: 0; border-radius: 999px; color: #fff; background: #17212B; font-size: 11px; font-weight: 800; text-decoration: none; cursor: pointer; }
+        .hero-button.secondary { color: #263744; background: #fff; }
+        .feature-overview { max-width: 1040px; margin: 0 auto 54px; }
+        .feature-overview-heading { margin-bottom: 18px; text-align: center; }
+        .feature-overview-heading .eyebrow { margin-bottom: 5px; color: #4386AA; font-size: 9px; font-weight: 800; letter-spacing: 1.4px; }
+        .feature-overview-heading h2 { color: #17212B; font-size: 22px; letter-spacing: -.6px; }
+        .feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+        .feature-tile { min-height: 142px; padding: 18px; border: 1px solid #F0F2F4; border-radius: 20px; background: #F8F9FA; }
+        .feature-icon { display: grid; place-items: center; width: 24px; height: 24px; margin-bottom: 13px; border-radius: 7px; color: #4287AA; background: #E6F2F8; font-size: 15px; font-weight: 800; }
+        .feature-tile h3 { margin-bottom: 6px; color: #263744; font-size: 12px; font-weight: 800; }
+        .feature-tile p { max-width: 300px; color: #788895; font-size: 10px; line-height: 1.6; }
+        .dashboard-grid { width: min(100%, 1420px); margin: 0 auto; gap: 18px; }
+        .section-heading { margin: 0 auto 18px; text-align: center; }
+        .section-heading .eyebrow { margin-bottom: 5px; color: #4386AA; font-size: 9px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; }
+        .section-heading h2 { color: #17212B; font-size: 22px; line-height: 1.25; letter-spacing: -.7px; }
+        .section-heading p { margin-top: 6px; color: #788895; font-size: 11px; line-height: 1.6; }
+        .section-heading.results-heading { margin-top: 20px; }
+        .row-top { gap: 14px; }
+        .row-bottom { gap: 14px; }
+        .card { padding: 20px; border: 1px solid #F0F2F4; border-radius: 23px; background: #F8F9FA; box-shadow: none; }
+        .card:hover { border-color: #E3EDF3; box-shadow: 0 12px 28px rgba(60,94,116,.06); }
+        .card-header { margin-bottom: 14px; }
+        .icon-badge { width: 32px; height: 32px; border-radius: 10px; background: #E7F2F8; }
+        .icon-badge svg { width: 17px; height: 17px; fill: #4287AA; }
+        .card-title { color: #1E2B35; font-size: 14px; font-weight: 800; }
+        .input-group label { color: #657786; font-size: 10px; text-transform: none; letter-spacing: 0; }
+        .input-group input, .input-group select { border-color: #E7EBEF; border-radius: 11px; background: #fff; color: #263744; }
+        .input-group input:focus, .input-group select:focus { border-color: #78A9C8; box-shadow: 0 0 0 3px rgba(120,169,200,.13); }
+        .field-note { color: #8896A1; }
+        .advanced-settings { border-color: #E6EBEF; background: #fff; }
+        .advanced-settings summary { color: #3F83A8; }
+        .btn-run { border-radius: 999px; background: #17212B; box-shadow: 0 7px 14px rgba(23,33,43,.12); }
+        .btn-run:hover { background: #304653; }
+        .btn-mode-toggle { border-color: #79A8C5; border-radius: 999px; color: #347CA5; background: #EFF7FB; }
+        .btn-mode-toggle.off { border-color: #E76F68; color: #C94C48; background: #FFF2F1; }
+        .visual-box { border-color: #E8EDF0; border-radius: 17px; background: #fff; }
+        .mechanism-note { color: #71818E; }
+        .mechanism-note a { color: #347CA5; }
+        .measurement-panel { border-color: #E8EDF0; border-radius: 14px; background: #fff; }
+        .measurement-panel p { color: #748391; }
+        .measurement-actions .btn-secondary { border-color: #E3E9ED; border-radius: 999px; color: #3D5665; background: #fff; font-size: 10px; }
+        .stat-card { border: 1px solid #EEF1F3; border-radius: 14px; background: #fff; }
+        .stat-card-title { color: #7A8995; }
+        .scenario-chart { border-color: #EEF1F3; border-radius: 19px; background: #fff; }
+        .scenario-chart-heading h3 { color: #1E2B35; }
+        .general-tag { color: #367FA8; background: #EAF4FA; }
+        .erv-tag { color: #23866B; background: #E8F6F0; }
+        .temperature-model-note { border-color: #E8EDF0; border-radius: 14px; background: #fff; }
+        .temperature-model-note summary { color: #367FA8; }
+        .dbpia-heat-note { border-left-color: #78A9C8; background: #EFF7FB; }
+        .dbpia-heat-note a, .reference-links a { color: #347CA5; }
+        .closing-banner { max-width: 1480px; margin: 48px auto 22px; padding: 34px 20px; border-radius: 24px; color: #fff; text-align: center; background: linear-gradient(165deg, #789FC1, #C8DFEC); }
+        .closing-banner h2 { font-size: 25px; line-height: 1.1; letter-spacing: -.7px; }
+        .closing-banner p { margin: 8px auto 14px; color: rgba(255,255,255,.9); font-size: 11px; }
+        .closing-banner a { display: inline-flex; padding: 9px 15px; border-radius: 999px; color: #fff; background: #17212B; font-size: 10px; font-weight: 800; text-decoration: none; }
+        .site-footer { display: flex; justify-content: space-between; gap: 16px; max-width: 1480px; margin: 0 auto; padding: 8px 8px 0; color: #84919B; font-size: 9px; }
+        @media (max-width: 1080px) { .row-top { grid-template-columns: repeat(2, minmax(0, 1fr)); } .row-top > .card:nth-child(3) { grid-column: span 2; } }
+        @media (max-width: 760px) {
+            body { padding: 12px 12px 28px; }
+            .header { height: auto; min-height: 40px; flex-wrap: wrap; margin-bottom: 10px; }
+            .nav-links { order: 3; width: 100%; justify-content: flex-start; gap: 18px; margin: 0; padding: 4px 0 8px; }
+            .header-actions { margin-left: auto; }
+            .hero-banner { min-height: 220px; margin-bottom: 38px; padding: 38px 18px 30px; border-radius: 22px; }
+            .hero-banner p { font-size: 11px; }
+            .feature-overview { margin-bottom: 38px; }
+            .feature-grid { grid-template-columns: 1fr; }
+            .feature-tile { min-height: 0; }
+            .section-heading { margin-bottom: 14px; }
+            .section-heading h2 { font-size: 20px; }
+            .row-top, .row-bottom, .scenario-charts { grid-template-columns: 1fr; }
+            .row-top > .card:nth-child(3) { grid-column: auto; }
+            .scenario-plot { height: 340px; }
+            .closing-banner { margin-top: 34px; padding: 30px 16px; }
+            .closing-banner h2 { font-size: 22px; }
+            .site-footer { flex-direction: column; }
+        }
+        @media print { .hero-banner, .feature-overview, .nav-links, .section-heading, .closing-banner, .site-footer { display: none !important; } }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <a class="brand" href="#top" aria-label="우리 학교 ERV 시뮬레이터 홈">
+            <span class="brand-mark" aria-hidden="true">E</span>
+            <h1 class="header-title">우리 학교 ERV</h1>
+        </a>
+        <nav class="nav-links" aria-label="페이지 메뉴">
+            <a href="#settings">환경 설정</a>
+            <a href="#seatCard">교실 기류</a>
+            <a href="#analysis">CO₂ 분석</a>
+        </nav>
+        <div class="header-actions">
+            <button class="btn-secondary" onclick="printReport()">🖨 보고서 인쇄 / PDF 저장</button>
+        </div>
+    </div>
+
+    <section class="hero-banner" id="top">
+        <div class="hero-eyebrow">SCHOOL AIR QUALITY SIMULATOR</div>
+        <h2>우리 교실의 공기를<br>더 건강하게, 더 똑똑하게</h2>
+        <p>우리 반의 크기와 실내 조건을 바탕으로 일반 환기와 폐열회수 환기의 CO₂·온도 변화를 비교해보세요.</p>
+        <div class="hero-actions">
+            <a class="hero-button" href="#settings">시뮬레이터 시작</a>
+            <a class="hero-button secondary" href="#mechanism">작동 원리 보기</a>
+        </div>
+    </section>
+
+    <section class="feature-overview" aria-label="시뮬레이터 주요 기능">
+        <div class="feature-overview-heading">
+            <div class="eyebrow">FEATURES</div>
+            <h2>우리 교실 환기를 쉽게 살펴봐요</h2>
+        </div>
+        <div class="feature-grid">
+            <article class="feature-tile">
+                <span class="feature-icon">⌂</span>
+                <h3>교실 조건 맞춤 설정</h3>
+                <p>실측한 교실 크기와 학생 수를 기준으로 우리 반 환경을 구성합니다.</p>
+            </article>
+            <article class="feature-tile">
+                <span class="feature-icon">↔</span>
+                <h3>환기 방식 비교</h3>
+                <p>같은 풍량 조건에서 일반 환기와 ERV의 CO₂·온도 변화를 비교합니다.</p>
+            </article>
+            <article class="feature-tile">
+                <span class="feature-icon">⌁</span>
+                <h3>실측값과 함께 보기</h3>
+                <p>교실에서 측정한 CO₂ CSV를 불러와 예측선과 나란히 확인합니다.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="print-summary" id="printSummary">
+        <p class="report-lead" id="reportGeneratedAt"></p>
+        <p class="report-lead" id="reportLead"></p>
+        <h2>60분 CO₂ 예측 및 실측 비교</h2>
+        <div class="report-results">
+            <div class="report-metric"><strong>환기 없음</strong><span id="reportNoVent">-</span></div>
+            <div class="report-metric"><strong>일반 환기</strong><span id="reportGeneral">-</span></div>
+            <div class="report-metric"><strong>ERV (같은 풍량)</strong><span id="reportErv">-</span></div>
+            <div class="report-metric"><strong>실측 기반 회수 열에너지</strong><span id="reportHeatEnergy">-</span></div>
+        </div>
+        <div class="report-chart-grid">
+            <figure><figcaption>일반 환기 · CO₂ 및 공기 온도 추정</figcaption><img id="reportGeneralChartImage" alt="일반 환기 그래프"></figure>
+            <figure><figcaption>ERV 환기 · CO₂ 및 공기 온도 추정</figcaption><img id="reportErvChartImage" alt="ERV 환기 그래프"></figure>
+        </div>
+        <h2>입력 조건</h2>
+        <table class="report-table"><tbody id="reportInputs"></tbody></table>
+        <p class="report-footnote" id="reportAssumptions"></p>
+        <p class="report-footnote" id="reportMeasurementPlan"></p>
+    </section>
+
+    <div class="dashboard-grid">
+        <section class="section-heading" id="settings">
+            <div class="eyebrow">CLASSROOM SETTINGS</div>
+            <h2>우리 반 환경에 맞춰 설정해요</h2>
+            <p>실측한 교실 크기와 현재 조건을 입력하면 환기 방식별 예측을 확인할 수 있어요.</p>
+        </section>
+        
+        <div class="row-top">
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-badge">
+                        <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                    </div>
+                    <div class="card-title">우리반 환경 정보</div>
+                </div>
+                <div class="input-group">
+                    <label>학생 수 (명)</label>
+                    <input type="number" id="students" value="27">
+                </div>
+                <div class="input-group">
+                    <label>교실 용적 (m³)</label>
+                    <input type="number" id="volume" value="172.1" step="0.1">
+                    <small class="field-note">실측 크기 7.36 × 8.66 × 2.70m</small>
+                </div>
+                <div class="input-group">
+                    <label>시작 실내 CO₂ 측정값 (ppm)</label>
+                    <input type="number" id="indoorCo2" value="2300" min="0" step="10">
+                </div>
+                <details class="advanced-settings">
+                    <summary>추가 환경 설정 더보기 (3개)</summary>
+                    <div class="advanced-settings-content">
+                        <div class="input-group">
+                            <label>학교 / 교실명</label>
+                            <input type="text" id="schoolName" value="우리 학교 교실">
+                        </div>
+                        <div class="input-group">
+                            <label>🏃 학생 활동량</label>
+                            <select id="activity">
+                                <option value="18">보통 수업 (가만히 앉아있음 / 18 L/h)</option>
+                                <option value="45">체육 수업 직후 (숨 헐떡임 / 45 L/h)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>외기 CO₂ 농도 (ppm)</label>
+                            <input type="number" id="outdoorCo2" value="420" min="0" step="10">
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon-badge">
+                        <svg viewBox="0 0 24 24"><path d="M15 13V5c0-1.66-1.34-3-3-3S9 3.34 9 5v8c-1.21.91-2 2.37-2 4 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.09-2-4zm-4-8c0-.55.45-1 1-1s1 .45 1 1v4h-2V5z"/></svg>
+                    </div>
+                    <div class="card-title">온도 & 성능 설정</div>
+                </div>
+                <div class="input-group">
+                    <label>외기 기온 (°C)</label>
+                    <input type="number" id="outdoorTemp" value="-10">
+                </div>
+                <div class="input-group">
+                    <label>실내 목표 온도 (°C)</label>
+                    <input type="number" id="indoorTemp" value="25">
+                </div>
+                <div class="input-group">
+                    <label>열교환 효율 (%)</label>
+                    <input type="number" id="efficiency" value="75">
+                    <small class="field-note">예상 급기·배기온도 표시용입니다. 회수 열량은 실측 급기온도로 계산합니다.</small>
+                </div>
+                <div class="input-group">
+                    <label>하루 난방·환기 가동시간 (시간)</label>
+                    <input type="number" id="operatingHours" value="6" min="0" max="24" step="0.5">
+                </div>
+                <details class="advanced-settings">
+                    <summary>추가 난방 설정 더보기 (3개)</summary>
+                    <div class="advanced-settings-content">
+                        <div class="input-group">
+                            <label>연간 난방 운전일수 (일)</label>
+                            <input type="number" id="heatingDays" value="120" min="0" step="1">
+                        </div>
+                        <div class="input-group">
+                            <label>측정 환기 풍량 (m³/h)</label>
+                            <input type="number" id="airflow" value="500" min="0" step="10">
+                            <small class="field-note">장치 사양 또는 풍량 측정값을 입력하세요. 기본값은 예시입니다.</small>
+                        </div>
+                        <div class="input-group">
+                            <label>ERV 실측 급기 온도 (°C)</label>
+                            <input type="number" id="measuredSupplyTemp" value="" step="0.1" placeholder="측정값 입력">
+                            <small class="field-note">장치 급기구에서 측정하세요. 입력하면 외기 대비 회수 열량을 계산합니다.</small>
+                        </div>
+                    </div>
+                </details>
+                <button class="btn-run" onclick="calculate()">시뮬레이션 실행</button>
+            </div>
+
+            <div class="card" id="mechanism">
+                <div class="card-header">
+                    <div class="icon-badge">
+                        <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                    </div>
+                    <div class="card-title">폐열회수 환기장치 메커니즘</div>
+                    <div class="card-header-action">
+                        <!-- 오른쪽 위 회전/모드 변경 이모티콘 버튼 -->
+                        <button class="btn-mode-toggle" id="btnModeToggle" onclick="toggleErvMode()">
+                            🔄 ERV 사용중
+                        </button>
+                    </div>
+                </div>
+                <p class="mechanism-note">실내 오염공기(RA)가 휠에 열과 습기를 남기고 배기(EA)되며, 외기(OA)는 휠을 지나 열을 회수해 급기(SA)됩니다. 색상은 입력 온도로 갱신하고, 습도 변화는 계산하지 않습니다. <a href="https://issk.co.kr/14" target="_blank" rel="noopener noreferrer">원리 출처</a></p>
+                <div class="visual-box">
+                    <svg width="100%" height="100%" viewBox="0 0 520 220" preserveAspectRatio="xMidYMid meet">
+                        <g transform="translate(45, 35)">
+                            <circle cx="0" cy="0" r="28" fill="#2b6cb0"/>
+                            <text x="0" y="4" font-size="13" font-weight="800" fill="#FFFFFF" text-anchor="middle">실내</text>
+                        </g>
+                        <g transform="translate(475, 35)">
+                            <circle cx="0" cy="0" r="28" fill="#2b6cb0"/>
+                            <text x="0" y="4" font-size="13" font-weight="800" fill="#FFFFFF" text-anchor="middle">실외</text>
+                        </g>
+
+                        <rect x="15" y="70" width="185" height="135" rx="8" fill="none" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+                        <path d="M 55 115 L 55 100 L 155 100 L 155 110" fill="none" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M 45 115 L 65 115" stroke="#64748B" stroke-width="3" stroke-linecap="round"/>
+                        <g fill="#1E293B">
+                            <polygon points="50,105 55,97 60,105"/>
+                        </g>
+                        <text x="75" y="92" font-size="10" font-weight="700" fill="#475569">배기관</text>
+                        
+                        <text x="65" y="133" font-size="11" font-weight="800" fill="#1E293B">실내 오염(RA)</text>
+                        <text id="uiReturnTemp" x="65" y="148" font-size="11" font-weight="700" fill="#E11D48">25°C</text>
+
+                        <path d="M 155 145 L 115 145 L 115 165 L 55 165" fill="none" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        <rect x="75" y="162" width="5" height="6" fill="#64748B"/>
+                        <rect x="90" y="162" width="5" height="6" fill="#64748B"/>
+                        <rect x="105" y="162" width="5" height="6" fill="#64748B"/>
+                        <g fill="#0284C7">
+                            <polygon points="75,175 78,182 81,175"/>
+                            <polygon points="90,175 93,182 96,175"/>
+                            <polygon points="105,175 108,182 111,175"/>
+                        </g>
+                        <text x="130" y="137" font-size="10" font-weight="700" fill="#475569">급기관</text>
+                        
+                        <text x="135" y="165" font-size="11" font-weight="800" fill="#1E293B">급기(SA)</text>
+                        <text id="uiSupplyTemp" x="135" y="180" font-size="11" font-weight="700" fill="#0284C7">24°C</text>
+
+                        <rect x="230" y="70" width="130" height="120" rx="7" fill="#334155" stroke="#0F172A" stroke-width="2.5"/>
+                        <rect x="235" y="75" width="120" height="110" rx="4" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1"/>
+                        <rect x="240" y="80" width="110" height="100" rx="3" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+                        <g fill="#64748B" stroke="#F8FAFC" stroke-width="0.7">
+                            <circle cx="237" cy="77" r="2"/><circle cx="353" cy="77" r="2"/>
+                            <circle cx="237" cy="183" r="2"/><circle cx="353" cy="183" r="2"/>
+                        </g>
+                        <rect x="225" y="103" width="17" height="14" rx="2" fill="#475569" stroke="#0F172A" stroke-width="1"/>
+                        <rect x="348" y="103" width="17" height="14" rx="2" fill="#475569" stroke="#0F172A" stroke-width="1"/>
+                        <rect x="225" y="143" width="17" height="14" rx="2" fill="#475569" stroke="#0F172A" stroke-width="1"/>
+                        <rect x="348" y="143" width="17" height="14" rx="2" fill="#475569" stroke="#0F172A" stroke-width="1"/>
+                        <path d="M228 106v8 M232 106v8 M236 106v8 M351 106v8 M355 106v8 M359 106v8 M228 146v8 M232 146v8 M236 146v8 M351 146v8 M355 146v8 M359 146v8" stroke="#CBD5E1" stroke-width="1"/>
+                        <text x="295" y="64" text-anchor="middle" font-size="10" font-weight="800" fill="#1E293B">폐열회수 환기장치</text>
+
+                        <!-- ERV 코어 영역 -->
+                        <g transform="translate(295, 130)" id="ervCoreGroup">
+                            <circle r="46" fill="#CBD5E1" stroke="#475569" stroke-width="2"/>
+                            <circle id="coreGradPath" r="41" fill="url(#coreGrad)" opacity="0.45"/>
+                            <circle r="35" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.8"/>
+                            <circle r="25" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.8"/>
+                            <g id="ervCoreRotating">
+                                <path d="M0 -42V-7 M21 -36L4 -6 M36 -21L6 -4 M42 0H7 M36 21L6 4 M21 36L4 6 M0 42V7 M-21 36L-4 6 M-36 21L-6 4 M-42 0H-7 M-36 -21L-6 -4 M-21 -36L-4 -6" stroke="#64748B" stroke-width="1.2"/>
+                                <circle r="31" fill="none" stroke="#64748B" stroke-width="1" stroke-dasharray="2 2"/>
+                                <circle r="7" fill="#475569" stroke="#F8FAFC" stroke-width="1.5"/>
+                                <circle r="2" fill="#F8FAFC"/>
+                                <animateTransform id="coreAnimation" attributeName="transform" type="rotate" from="0" to="360" dur="6s" repeatCount="indefinite"/>
+                            </g>
+                        </g>
+                        <text x="295" y="184" text-anchor="middle" font-size="8" font-weight="700" fill="#475569">회전형 열교환 휠</text>
+
+                        <defs>
+                            <linearGradient id="coreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#3B82F6"/>
+                                <stop offset="100%" stop-color="#EF4444"/>
+                            </linearGradient>
+                            <linearGradient id="exhaustAirGradient" gradientUnits="userSpaceOnUse" x1="155" y1="110" x2="400" y2="110">
+                                <stop id="exhaustGradientStart" offset="0%" stop-color="#EF4444"/>
+                                <stop id="exhaustGradientCoreStart" offset="31%" stop-color="#EF4444"/>
+                                <stop id="exhaustGradientCoreEnd" offset="84%" stop-color="#F97316"/>
+                                <stop id="exhaustGradientEnd" offset="100%" stop-color="#F97316"/>
+                            </linearGradient>
+                            <linearGradient id="supplyAirGradient" gradientUnits="userSpaceOnUse" x1="400" y1="150" x2="155" y2="150">
+                                <stop id="supplyGradientStart" offset="0%" stop-color="#2563EB"/>
+                                <stop id="supplyGradientCoreStart" offset="16%" stop-color="#2563EB"/>
+                                <stop id="supplyGradientCoreEnd" offset="69%" stop-color="#F97316"/>
+                                <stop id="supplyGradientEnd" offset="100%" stop-color="#EF4444"/>
+                            </linearGradient>
+                            <linearGradient id="temperatureLegendGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#2563EB"/>
+                                <stop offset="100%" stop-color="#EF4444"/>
+                            </linearGradient>
+                        </defs>
+
+                        <text x="400" y="105" font-size="11" font-weight="800" fill="#0284C7">배기(EA)</text>
+                        <text id="uiExhaustTemp" x="400" y="120" font-size="11" font-weight="700" fill="#0284C7">-4°C</text>
+
+                        <text x="400" y="165" font-size="11" font-weight="800" fill="#0284C7">외기(OA)</text>
+                        <text id="uiOutdoorTemp" x="400" y="180" font-size="11" font-weight="700" fill="#0284C7">-10°C</text>
+
+                        <path d="M 155 110 L 400 110" stroke="url(#exhaustAirGradient)" stroke-width="3" stroke-linecap="round" fill="none"/>
+                        <path d="M 400 150 L 155 150" stroke="url(#supplyAirGradient)" stroke-width="3" stroke-linecap="round" fill="none"/>
+                        <polygon points="190,105 200,110 190,115" fill="url(#exhaustAirGradient)"/>
+                        <polygon points="380,105 390,110 380,115" fill="url(#exhaustAirGradient)"/>
+                        <polygon points="380,145 370,150 380,155" fill="url(#supplyAirGradient)"/>
+                        <polygon points="190,145 180,150 190,155" fill="url(#supplyAirGradient)"/>
+                        <g id="mechanismAirParticles"></g>
+                        <text x="375" y="198" font-size="8" font-weight="700" fill="#2563EB">차가움</text>
+                        <rect x="375" y="202" width="100" height="7" rx="3.5" fill="url(#temperatureLegendGradient)"/>
+                        <text x="475" y="218" text-anchor="end" font-size="8" font-weight="700" fill="#DC2626">뜨거움</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <section class="section-heading results-heading">
+            <div class="eyebrow">AIRFLOW & PREDICTION</div>
+            <h2>공기 흐름과 예측 결과를 한눈에</h2>
+            <p>교실 내부 기류 개념도와 60분 CO₂·온도 예측을 함께 살펴보세요.</p>
+        </section>
+
+        <div class="row-bottom">
+            <div class="card" id="seatCard">
+                <div class="card-header">
+                    <div class="icon-badge">
+                        <svg viewBox="0 0 24 24"><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>
+                    </div>
+                    <div class="card-title">우리반 실내 기류: 교실 전역 분산 순환</div>
+                    <div class="card-header-action">
+                        <button class="btn-expand" id="expandBtn" onclick="toggleFullscreen()" title="크게 보기">🔍</button>
+                    </div>
+                </div>
+                <p class="mechanism-note">정해진 한 개의 급기구·회수구를 가정하지 않고, 여러 흐름선으로 교실 전체의 순환과 본체를 통한 외기 유입·배기를 개념적으로 표시합니다.</p>
+                <div class="visual-box" style="background: #FFFFFF;">
+                    <svg width="100%" height="100%" viewBox="0 0 520 430" preserveAspectRatio="xMidYMid meet">
+                        <rect x="112" y="45" width="294.4" height="346.4" rx="12" fill="#FAFCFE" stroke="#A3AED0" stroke-width="3"/>
+                        <defs>
+                            <linearGradient id="planSupplyGradient" gradientUnits="userSpaceOnUse" x1="110" y1="195" x2="392" y2="88"><stop id="planSupplyStart" offset="0%" stop-color="#F97316"/><stop id="planSupplyEnd" offset="100%" stop-color="#F97316"/></linearGradient>
+                            <linearGradient id="planReturnGradient" gradientUnits="userSpaceOnUse" x1="392" y1="348" x2="110" y2="218"><stop id="planReturnStart" offset="0%" stop-color="#EF4444"/><stop id="planReturnEnd" offset="100%" stop-color="#EF4444"/></linearGradient>
+                            <linearGradient id="planOutdoorGradient" gradientUnits="userSpaceOnUse" x1="24" y1="174" x2="68" y2="196"><stop id="planOutdoorStart" offset="0%" stop-color="#2563EB"/><stop id="planOutdoorEnd" offset="100%" stop-color="#2563EB"/></linearGradient>
+                            <linearGradient id="planExhaustGradient" gradientUnits="userSpaceOnUse" x1="68" y1="216" x2="24" y2="240"><stop id="planExhaustStart" offset="0%" stop-color="#F97316"/><stop id="planExhaustEnd" offset="100%" stop-color="#F97316"/></linearGradient>
+                        </defs>
+                        <line x1="112" y1="27" x2="406.4" y2="27" stroke="#64748B" stroke-width="1.5"/>
+                        <path d="M112 27 l8 -4 v8 z M406.4 27 l-8 -4 v8 z" fill="#64748B"/>
+                        <text x="259" y="21" text-anchor="middle" font-size="12" font-weight="800" fill="#475569">가로 7.36m</text>
+                        <line x1="424" y1="45" x2="424" y2="391.4" stroke="#64748B" stroke-width="1.5"/>
+                        <path d="M424 45 l-4 8 h8 z M424 391.4 l-4 -8 h8 z" fill="#64748B"/>
+                        <text x="440" y="220" text-anchor="middle" font-size="12" font-weight="800" fill="#475569" transform="rotate(90 440 220)">세로 8.66m</text>
+
+                        <rect x="155" y="52" width="210" height="8" rx="3" fill="#1B2559"/>
+                        <text x="260" y="58" text-anchor="middle" font-size="6" font-weight="800" fill="#FFFFFF">칠판 · 앞</text>
+                        <g id="teacherDesk" aria-label="교탁 85×55cm">
+                            <rect x="158" y="68" width="34" height="22" rx="2" fill="#D6B58C" stroke="#7C5B3B" stroke-width="1.5"/>
+                            <rect x="161" y="71" width="28" height="15" rx="1" fill="#E8D3B5" stroke="#A17C55" stroke-width="0.7"/>
+                            <path d="M160 87h30" stroke="#7C5B3B" stroke-width="1.5"/>
+                            <text x="175" y="81" text-anchor="middle" font-size="6" font-weight="800" fill="#5B422D">교탁</text>
+                        </g>
+                        <text x="197" y="81" font-size="7" font-weight="700" fill="#64748B">85×55cm</text>
+
+                        <!-- 왼쪽 긴 벽 창문: 위쪽 2개, 아래쪽 2개. 중앙 기둥 사이 배치 -->
+                        <rect x="108" y="97" width="8" height="30" rx="2" fill="#BAE6FD" stroke="#0284C7" stroke-width="1.5"/>
+                        <rect x="108" y="143" width="8" height="30" rx="2" fill="#BAE6FD" stroke="#0284C7" stroke-width="1.5"/>
+                        <rect x="105" y="190" width="14" height="26" rx="2" fill="#64748B"/>
+                        <text x="95" y="187" text-anchor="end" font-size="9" font-weight="700" fill="#475569">기둥</text>
+                        <rect x="108" y="237" width="8" height="30" rx="2" fill="#BAE6FD" stroke="#0284C7" stroke-width="1.5"/>
+                        <rect x="108" y="283" width="8" height="30" rx="2" fill="#BAE6FD" stroke="#0284C7" stroke-width="1.5"/>
+                        <text x="18" y="95" font-size="10" font-weight="800" fill="#0284C7">창문 4개</text>
+                        <text x="18" y="111" font-size="9" fill="#475569">폭 0.75m/개</text>
+                        <text x="18" y="126" font-size="9" fill="#475569">높이 1.50m</text>
+                        <text x="18" y="141" font-size="8" fill="#64748B">개략 배치</text>
+
+                        <!-- 본체에서 교실 여러 구역으로 퍼지고, 교실 공기는 여러 경로로 본체에 회수됨 -->
+                        <g id="roomAirStreamlines"></g>
+                        <g id="outsideAirStreamlines"></g>
+                        <text x="260" y="366" text-anchor="middle" font-size="8" font-weight="700" fill="#475569">교실 전역을 순환한 뒤 본체에서 외기로 배출</text>
+                        <text id="planSupplyTemp" x="260" y="378" text-anchor="middle" font-size="8" font-weight="700" fill="#B91C1C">급기 16.3°C</text>
+                        <text id="planReturnTemp" x="260" y="389" text-anchor="middle" font-size="8" font-weight="700" fill="#B91C1C">회수 25.0°C</text>
+                        <text x="18" y="165" font-size="8" font-weight="800" fill="#1D4ED8">외기 OA</text>
+                        <text id="planOutdoorTemp" x="18" y="177" font-size="8" fill="#1D4ED8">-10°C</text>
+                        <text x="18" y="274" font-size="8" font-weight="800" fill="#C2410C">배기 EA</text>
+                        <text id="planExhaustTemp" x="18" y="286" font-size="8" fill="#C2410C">13.8°C</text>
+
+                        <!-- 책상 65 x 45 cm, 동일 축척 40 px/m -->
+                        <g class="desk"><rect x="148" y="95" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="161" cy="104" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="176" y="95" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="189" cy="104" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="232" y="95" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="245" cy="104" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="260" y="95" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="273" cy="104" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="316" y="95" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="329" cy="104" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="344" y="95" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="357" cy="104" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="148" y="147" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="161" cy="156" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="176" y="147" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="189" cy="156" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="232" y="147" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="245" cy="156" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="260" y="147" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="273" cy="156" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="316" y="147" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="329" cy="156" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="344" y="147" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="357" cy="156" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="148" y="199" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="161" cy="208" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="176" y="199" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="189" cy="208" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="232" y="199" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="245" cy="208" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="260" y="199" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="273" cy="208" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="316" y="199" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="329" cy="208" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="344" y="199" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="357" cy="208" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="148" y="251" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="161" cy="260" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="176" y="251" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="189" cy="260" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="232" y="251" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="245" cy="260" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="260" y="251" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="273" cy="260" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="316" y="251" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="329" cy="260" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="344" y="251" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="357" cy="260" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="148" y="303" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="161" cy="312" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="176" y="303" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="189" cy="312" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+<g class="desk"><rect x="232" y="303" width="26" height="18" rx="2" fill="#FFFFFF" stroke="#4318FF" stroke-width="1.5"/><circle cx="245" cy="312" r="2.7" fill="#4318FF" fill-opacity="0.25"/></g>
+                        <g transform="translate(52, 178)" id="roomErvUnit">
+                            <rect width="58" height="55" rx="5" fill="#334155" stroke="#0F172A" stroke-width="1.5"/>
+                            <rect x="4" y="4" width="50" height="47" rx="3" fill="#E2E8F0" stroke="#94A3B8" stroke-width="1"/>
+                            <rect x="8" y="12" width="14" height="31" rx="2" fill="#DBEAFE" stroke="#2563EB" stroke-width="1"/>
+                            <path d="M11 16h8 M11 21h8 M11 26h8 M11 31h8 M11 36h8" stroke="#60A5FA" stroke-width="1"/>
+                            <circle cx="39" cy="28" r="14" fill="#F8FAFC" stroke="#475569" stroke-width="1.5"/>
+                            <g id="planWheelRotor">
+                                <path d="M39 15v26 M26 28h26 M30 19l18 18 M48 19L30 37" stroke="#64748B" stroke-width="1.2"/>
+                                <circle cx="39" cy="28" r="5" fill="#F97316" stroke="#475569" stroke-width="1"/>
+                                <animateTransform attributeName="transform" type="rotate" from="0 39 28" to="360 39 28" dur="5s" repeatCount="indefinite"/>
+                            </g>
+                            <rect x="-3" y="17" width="8" height="8" rx="1" fill="#2563EB"/>
+                            <rect x="-3" y="32" width="8" height="8" rx="1" fill="#F97316"/>
+                            <rect x="53" y="17" width="8" height="8" rx="1" fill="#EF4444"/>
+                            <rect x="53" y="32" width="8" height="8" rx="1" fill="#FB923C"/>
+                            <text x="29" y="10" text-anchor="middle" font-size="7" font-weight="800" fill="#0F172A">ERV · 휠 · 필터</text>
+                        </g>
+                        <text x="260" y="414" text-anchor="middle" font-size="10" font-weight="800" fill="#1B2559">높이 2.70m · 용적 172.1m³ · 책상 65×45cm (27석 표시)</text>
+                        <text x="260" y="428" text-anchor="middle" font-size="8" fill="#64748B">창문: 위쪽 2개 / 아래쪽 2개 · 가운데 기둥 · 환기 흐름은 개념도</text>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="card" id="analysis">
+                <div class="card-header">
+                    <div class="icon-badge">
+                        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                    </div>
+                    <div class="card-title">예측 수치 & CO₂ 분석</div>
+                </div>
+                <p style="font-size:11px; line-height:1.5; color:#64748B; margin:-6px 0 10px;">
+                    단순 완전혼합 모델 · 실내 시작값은 측정값 입력 · 재실인원과 환기 풍량 일정 가정. 일반 환기와 ERV는 같은 풍량일 때 CO₂ 결과가 같습니다. ERV의 차이는 열회수에 있습니다.
+                </p>
+
+                <div class="measurement-panel">
+                    <p>실측 CSV 형식: 첫 열은 분(0~60), 둘째 열은 CO₂ ppm. 예: <code>0,980</code>. 헤더 행은 선택 사항입니다. 재실 인원·활동·환기 조건이 비슷한 측정일수록 예측과 비교하기 좋습니다.</p>
+                    <div class="measurement-actions">
+                        <input type="file" id="measurementFile" accept=".csv,text/csv" aria-label="CO2 실측 CSV 파일">
+                        <button class="btn-secondary" type="button" onclick="downloadCsvTemplate()">CSV 양식 받기</button>
+                        <button class="btn-secondary" type="button" onclick="clearMeasurements()">실측값 지우기</button>
+                    </div>
+                    <div id="measurementStatus" aria-live="polite">실측 CSV를 불러오면 예측 그래프에 겹쳐 표시됩니다.</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-title">환기 없음 (60분 후)</div>
+                        <div class="stat-card-num c-red" id="txtCo2No">0 ppm</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-title">일반 환기 (60분 후)</div>
+                        <div class="stat-card-num c-blue" id="txtCo2General">0 ppm</div>
+                    </div>
+                    <div class="stat-card" style="grid-column: span 2;">
+                        <div class="stat-card-title">ERV 환기 (60분 후, 같은 풍량)</div>
+                        <div class="stat-card-num c-green" id="txtCo2Vent">0 ppm</div>
+                    </div>
+                    <div class="stat-card" style="grid-column: span 2; background: #E9EDF7; border: 1px solid #CBD5E1;">
+                        <div class="stat-card-title" style="color: #2B5C87; font-weight: 800;">🌡 실측 기준 회수 열에너지</div>
+                        <div class="stat-card-num c-blue" id="txtEnergySaved" style="font-size: 18px; margin-top: 4px;">급기 온도 입력 필요</div>
+                        <div class="stat-card-num c-blue" id="txtTempRise" style="font-size: 15px; margin-top: 4px;">외기 대비 온도 상승: -</div>
+                        <div style="font-size:10px; color:#64748B; margin-top:5px; line-height:1.4;">측정 풍량 × 0.335Wh/(m³·K) × (ERV 급기온도 − 외기온도) × 하루 가동시간 × 난방일수 ÷ 1000으로 회수 열량을 계산합니다. 요금 절감액은 요금·난방기기 정보가 없어 계산하지 않습니다.</div>
+                    </div>
+                </div>
+
+                <div class="scenario-charts">
+                    <section class="scenario-chart">
+                        <div class="scenario-chart-heading"><h3>일반 환기 (60분 후)</h3><span class="scenario-tag general-tag">외기 직접 공급</span></div>
+                        <p>CO₂ 농도와 환기로 인한 실내 공기 온도 추정 · 5분 간격</p>
+                        <div class="scenario-plot"><canvas id="generalChart" aria-label="일반 환기 CO2와 온도 그래프"></canvas></div>
+                    </section>
+                    <section class="scenario-chart">
+                        <div class="scenario-chart-heading"><h3>ERV 환기 (60분 후, 같은 풍량)</h3><span class="scenario-tag erv-tag">열회수 급기</span></div>
+                        <p>같은 CO₂ 제거량 조건에서 열회수 급기온도를 반영한 온도 추정</p>
+                        <div class="scenario-plot"><canvas id="ervChart" aria-label="ERV 환기 CO2와 온도 그래프"></canvas></div>
+                    </section>
+                </div>
+                <details class="temperature-model-note">
+                    <summary>온도 예측 방식과 참고 자료</summary>
+                    <p>완전혼합된 실내 공기의 열수지에서 환기 항만 반영한 간이 모델입니다. <code>T(t) = T급기 + (T시작 − T급기) × exp(−풍량/교실용적 × 시간(h))</code>. 일반 환기의 급기는 외기온도, ERV 급기는 열교환 효율로 계산한 온도(급기 실측값이 있으면 그 값)를 사용합니다. 공기 자체만 열용량으로 보므로 벽체·바닥의 열저장, 난방기 제어, 햇빛, 학생·기기 발열, 실제 기류 분포는 포함하지 않습니다. 따라서 온도선은 환기 방식 간 경향 비교용이며 실제 교실 온도 예측값이나 난방비 절감 보증값이 아닙니다. DOE의 한 프로토타입 실험에서도 겨울철 현열 효율은 풍량 120 cfm에서 약 65–70%였고, 풍량에 따라 달라졌습니다. 이 실험값은 특정 장치의 참고 사례일 뿐 학교에 설치할 장치의 보장값은 아닙니다.</p>
+                    <p class="reference-links">참고: <a href="https://bigladdersoftware.com/epx/docs/25-1/engineering-reference/basis-for-the-zone-and-air-system-integration.html" target="_blank" rel="noopener">EnergyPlus 구역 공기 열수지</a> · <a href="https://handbook.ashrae.org/Handbooks/F21/SI/f21_ch17/F21_Ch17_si.aspx" target="_blank" rel="noopener">ASHRAE 환기 열부하 및 HRV/ERV 현열 효율</a> · <a href="https://www.energy.gov/sites/default/files/2021-06/ventilation-integrated-comfort-system.pdf" target="_blank" rel="noopener">미국 DOE ERV 실험·효율 계산 자료</a></p>
+                    <p class="dbpia-heat-note"><strong>DBpia 자료 안내:</strong> 엄혜정(2024)은 학교 교실 용도프로필의 에너지 분석에서 재실자·기기의 내부발열량을 변수로 다룹니다. 다만 DBpia 공개 초록·검색결과에서는 학생 1인당 발열량(W/인)을 확인하지 못해, 이 온도 추정에는 학생 발열 수치를 더하지 않았습니다. <a href="https://www.dbpia.co.kr/journal/detail?nodeId=T17091441" target="_blank" rel="noopener">논문 정보 보기</a></p>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <section class="closing-banner">
+        <h2>환기 효과를 우리 교실 조건으로 확인해보세요</h2>
+        <p>입력값을 바꿔가며 실내 공기질과 열회수 결과를 비교할 수 있습니다.</p>
+        <a href="#settings">조건 다시 설정하기</a>
+    </section>
+    <footer class="site-footer">
+        <span>우리 학교 교실 환기·열회수 시뮬레이터</span>
+        <span>예측 결과는 입력 조건에 따른 단순 모델이며 실제 측정값과 다를 수 있습니다.</span>
+    </footer>
+
+    <script>
+        let generalChart = null;
+        let ervChart = null;
+        let isErvActive = true; // ERV 활성화 상태 관리 변수
+        let measuredPoints = [];
+
+        function downloadCsvTemplate() {
+            const rows = ['minutes,co2_ppm', '0,', '10,', '20,', '30,', '40,', '50,', '60,'];
+            const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = '교실_CO2_실측양식.csv';
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function printReport() {
+            calculate();
+            window.print();
+        }
+
+        function clearMeasurements() {
+            measuredPoints = [];
+            document.getElementById('measurementFile').value = '';
+            document.getElementById('measurementStatus').textContent = '실측값을 지웠습니다. 예측 그래프만 표시합니다.';
+            calculate();
+        }
+
+        async function loadMeasurements(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            try {
+                const csv = (await file.text()).replace(/^\uFEFF/, '');
+                const byMinute = new Map();
+                let skipped = 0;
+                csv.split(/\r?\n/).forEach(line => {
+                    if (!line.trim()) return;
+                    const columns = line.split(/[,;\t]/).map(value => value.trim().replace(/^"|"$/g, ''));
+                    const minute = Number(columns[0]);
+                    const ppm = Number(columns[1]);
+                    if (columns.length >= 2 && columns[0] !== '' && columns[1] !== '' && Number.isFinite(minute) && Number.isFinite(ppm) && minute >= 0 && minute <= 60 && ppm >= 0) {
+                        byMinute.set(minute, ppm);
+                    } else if (!/^(분|minutes?|time)/i.test(columns[0])) {
+                        skipped++;
+                    }
+                });
+                measuredPoints = Array.from(byMinute, ([x, y]) => ({ x, y })).sort((a, b) => a.x - b.x);
+                if (!measuredPoints.length) {
+                    document.getElementById('measurementStatus').textContent = '유효한 측정 행을 찾지 못했습니다. CSV에 분,CO₂ppm 형식의 숫자 두 개를 넣어주세요.';
+                } else {
+                    const last = measuredPoints[measuredPoints.length - 1];
+                    document.getElementById('measurementStatus').textContent = `${measuredPoints.length}개 실측값을 불러왔습니다. 마지막: ${last.x}분 ${last.y}ppm${skipped ? ` · 건너뛴 행 ${skipped}개` : ''}`;
+                }
+                calculate();
+            } catch (error) {
+                document.getElementById('measurementStatus').textContent = 'CSV 파일을 읽지 못했습니다. UTF-8 CSV 파일인지 확인해주세요.';
+            }
+        }
+
+        function setReportInputs(rows) {
+            const tbody = document.getElementById('reportInputs');
+            tbody.replaceChildren();
+            rows.forEach(([label, value]) => {
+                const tr = document.createElement('tr');
+                const th = document.createElement('th');
+                const td = document.createElement('td');
+                th.textContent = label;
+                td.textContent = value;
+                tr.append(th, td);
+                tbody.appendChild(tr);
+            });
+        }
+
+        function temperatureColor(temp, coldest, warmest) {
+            const blue = [37, 99, 235];
+            const red = [239, 68, 68];
+            const span = Math.max(warmest - coldest, 0.01);
+            const ratio = Math.min(1, Math.max(0, (temp - coldest) / span));
+            const rgb = blue.map((value, index) => Math.round(value + (red[index] - value) * ratio));
+            return '#' + rgb.map(value => value.toString(16).padStart(2, '0')).join('');
+        }
+
+        function updateAirflowColors(T_out, T_in, T_supply, T_exhaust) {
+            const coldest = Math.min(T_out, T_in);
+            const warmest = Math.max(T_out, T_in);
+            const outdoorColor = temperatureColor(T_out, coldest, warmest);
+            const indoorColor = temperatureColor(T_in, coldest, warmest);
+            const supplyColor = temperatureColor(T_supply, coldest, warmest);
+            const exhaustColor = temperatureColor(T_exhaust, coldest, warmest);
+            const stops = {
+                exhaustGradientStart: indoorColor,
+                exhaustGradientCoreStart: indoorColor,
+                exhaustGradientCoreEnd: exhaustColor,
+                exhaustGradientEnd: exhaustColor,
+                supplyGradientStart: outdoorColor,
+                supplyGradientCoreStart: outdoorColor,
+                supplyGradientCoreEnd: supplyColor,
+                supplyGradientEnd: supplyColor,
+                planSupplyStart: supplyColor,
+                planSupplyEnd: indoorColor,
+                planReturnStart: indoorColor,
+                planReturnEnd: indoorColor,
+                planOutdoorStart: outdoorColor,
+                planOutdoorEnd: outdoorColor,
+                planExhaustStart: exhaustColor,
+                planExhaustEnd: exhaustColor
+            };
+            Object.entries(stops).forEach(([id, color]) => {
+                const stop = document.getElementById(id);
+                if (stop) stop.setAttribute('stop-color', color);
+            });
+
+            document.getElementById('uiReturnTemp').setAttribute('fill', indoorColor);
+            document.getElementById('uiSupplyTemp').setAttribute('fill', supplyColor);
+            document.getElementById('uiOutdoorTemp').setAttribute('fill', outdoorColor);
+            document.getElementById('uiExhaustTemp').setAttribute('fill', exhaustColor);
+            document.getElementById('planSupplyTemp').setAttribute('fill', supplyColor);
+            document.getElementById('planReturnTemp').setAttribute('fill', indoorColor);
+            document.getElementById('planOutdoorTemp').setAttribute('fill', outdoorColor);
+            document.getElementById('planExhaustTemp').setAttribute('fill', exhaustColor);
+            document.querySelectorAll('.supply-color-animation').forEach(animation => animation.setAttribute('values', `${outdoorColor};${outdoorColor};${supplyColor};${supplyColor}`));
+            document.querySelectorAll('.exhaust-color-animation').forEach(animation => animation.setAttribute('values', `${indoorColor};${indoorColor};${exhaustColor};${exhaustColor}`));
+            document.querySelectorAll('.supply-color-animation').forEach(animation => animation.setAttribute('keyTimes', '0;0.16;0.69;1'));
+            document.querySelectorAll('.exhaust-color-animation').forEach(animation => animation.setAttribute('keyTimes', '0;0.31;0.84;1'));
+            document.querySelectorAll('.supply-particle').forEach(particle => particle.setAttribute('fill', supplyColor));
+            document.querySelectorAll('.plan-return-particle').forEach(particle => particle.setAttribute('fill', indoorColor));
+            document.querySelectorAll('.plan-outdoor-particle').forEach(particle => particle.setAttribute('fill', outdoorColor));
+            document.querySelectorAll('.plan-exhaust-particle').forEach(particle => particle.setAttribute('fill', exhaustColor));
+            document.querySelectorAll('.room-supply-color-animation').forEach(animation => animation.setAttribute('values', `${supplyColor};${indoorColor}`));
+        }
+
+        function buildRoomAirflow() {
+            const svgNS = 'http://www.w3.org/2000/svg';
+            const make = (name, attrs, parent) => {
+                const element = document.createElementNS(svgNS, name);
+                Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+                parent.appendChild(element);
+                return element;
+            };
+            const addParticles = (group, routes, options) => {
+                routes.forEach((route, routeIndex) => {
+                    make('path', {
+                        d: route,
+                        fill: 'none',
+                        stroke: `url(#${options.gradient})`,
+                        'stroke-width': options.strokeWidth,
+                        'stroke-dasharray': options.dash,
+                        'stroke-linecap': 'round',
+                        opacity: options.lineOpacity
+                    }, group);
+                    for (let particleIndex = 0; particleIndex < options.particlesPerRoute; particleIndex++) {
+                        const circle = make('circle', {
+                            r: options.radius,
+                            fill: options.fill,
+                            opacity: options.particleOpacity,
+                            class: options.particleClass
+                        }, group);
+                        make('animateMotion', {
+                            path: route,
+                            dur: `${options.duration + ((routeIndex + particleIndex) % 4) * 0.35}s`,
+                            begin: `${(routeIndex * 0.19 + particleIndex * options.spacing).toFixed(2)}s`,
+                            repeatCount: 'indefinite'
+                        }, circle);
+                        if (options.colorClass) {
+                            make('animate', {
+                                attributeName: 'fill',
+                                values: options.colorValues,
+                                dur: `${options.duration}s`,
+                                begin: `${(routeIndex * 0.19 + particleIndex * options.spacing).toFixed(2)}s`,
+                                repeatCount: 'indefinite',
+                                class: options.colorClass
+                            }, circle);
+                        }
+                    }
+                });
+            };
+
+            addParticles(document.getElementById('roomAirStreamlines'), [
+                'M110 188 C158 153 244 98 386 87',
+                'M110 192 C166 164 261 132 390 130',
+                'M110 196 C172 178 276 165 393 174',
+                'M110 200 C176 201 280 207 392 216',
+                'M110 204 C166 230 266 255 389 261',
+                'M110 208 C158 246 258 294 384 309',
+                'M110 214 C151 255 217 318 322 354',
+                'M110 205 C167 187 226 119 266 79'
+            ], {
+                gradient: 'planSupplyGradient', strokeWidth: 1.1, dash: '2 5', lineOpacity: 0.38,
+                particlesPerRoute: 4, radius: 1.35, fill: '#2563EB', particleOpacity: 0.9,
+                particleClass: 'plan-supply-particle', colorClass: 'room-supply-color-animation',
+                colorValues: '#2563EB;#EF4444', duration: 6.6, spacing: 1.05
+            });
+            addParticles(document.getElementById('roomAirStreamlines'), [
+                'M260 134 C210 148 158 169 110 186',
+                'M270 160 C212 170 159 184 110 192',
+                'M250 185 C200 186 151 192 110 198',
+                'M250 214 C200 210 151 207 110 203',
+                'M250 238 C200 226 151 216 110 209',
+                'M248 265 C199 250 151 232 110 215',
+                'M218 281 C178 260 142 238 110 220',
+                'M140 290 C130 266 120 243 110 224'
+            ], {
+                gradient: 'planReturnGradient', strokeWidth: 1, dash: '2 5', lineOpacity: 0.32,
+                particlesPerRoute: 4, radius: 1.25, fill: '#EF4444', particleOpacity: 0.84,
+                particleClass: 'plan-return-particle', duration: 7.2, spacing: 1.12
+            });
+
+            addParticles(document.getElementById('outsideAirStreamlines'), [
+                'M20 181 C30 183 39 188 51 195',
+                'M19 188 C31 190 39 193 51 198',
+                'M20 199 C31 197 40 197 51 195',
+                'M21 207 C32 203 41 200 51 198'
+            ], {
+                gradient: 'planOutdoorGradient', strokeWidth: 1.1, dash: '2 4', lineOpacity: 0.42,
+                particlesPerRoute: 4, radius: 1.3, fill: '#2563EB', particleOpacity: 0.92,
+                particleClass: 'plan-outdoor-particle', duration: 3.4, spacing: 0.72
+            });
+            addParticles(document.getElementById('outsideAirStreamlines'), [
+                'M112 211 C91 216 72 226 51 235',
+                'M112 216 C91 222 72 233 51 241',
+                'M112 222 C91 230 72 239 51 247',
+                'M112 226 C91 235 72 244 51 253'
+            ], {
+                gradient: 'planExhaustGradient', strokeWidth: 1.1, dash: '2 4', lineOpacity: 0.42,
+                particlesPerRoute: 4, radius: 1.3, fill: '#F97316', particleOpacity: 0.92,
+                particleClass: 'plan-exhaust-particle', duration: 3.8, spacing: 0.8
+            });
+
+            addParticles(document.getElementById('mechanismAirParticles'), [
+                'M155 110 L400 110'
+            ], {
+                gradient: 'exhaustAirGradient', strokeWidth: 0, dash: '0 1', lineOpacity: 0,
+                particlesPerRoute: 10, radius: 2.1, fill: '#EF4444', particleOpacity: 0.96,
+                particleClass: 'exhaust-particle', colorClass: 'exhaust-color-animation',
+                colorValues: '#EF4444;#F97316', duration: 3.3, spacing: 0.34
+            });
+            addParticles(document.getElementById('mechanismAirParticles'), [
+                'M400 150 L155 150'
+            ], {
+                gradient: 'supplyAirGradient', strokeWidth: 0, dash: '0 1', lineOpacity: 0,
+                particlesPerRoute: 10, radius: 2.1, fill: '#2563EB', particleOpacity: 0.96,
+                particleClass: 'supply-particle', colorClass: 'supply-color-animation',
+                colorValues: '#2563EB;#EF4444', duration: 3.3, spacing: 0.34
+            });
+        }
+
+        function toggleFullscreen() {
+            let card = document.getElementById('seatCard');
+            let btn = document.getElementById('expandBtn');
+            
+            card.classList.toggle('fullscreen');
+            
+            if (card.classList.contains('fullscreen')) {
+                btn.innerHTML = '📐'; 
+                btn.title = '작게 보기';
+            } else {
+                btn.innerHTML = '🔍'; 
+                btn.title = '크게 보기';
+            }
+        }
+
+        // ERV 모드 (ON/OFF) 전환 토글 함수
+        function toggleErvMode() {
+            isErvActive = !isErvActive;
+            
+            let btn = document.getElementById('btnModeToggle');
+            let coreAnim = document.getElementById('coreAnimation');
+            let corePath = document.getElementById('coreGradPath');
+
+            if (isErvActive) {
+                btn.classList.remove('off');
+                btn.innerHTML = '🔄 ERV 사용중';
+                coreAnim.beginElement(); // 애니메이션 재개
+                corePath.setAttribute('opacity', '0.65');
+            } else {
+                btn.classList.add('off');
+                btn.innerHTML = '↪ 바이패스 (열회수 없이 환기)';
+                coreAnim.endElement(); // 회전 정지
+                corePath.setAttribute('opacity', '0.1'); // 코어 비활성화 시각화
+            }
+
+            calculate();
+        }
+
+        function calculate() {
+            let N = Number(document.getElementById('students').value);
+            let V = Number(document.getElementById('volume').value);
+            let activityRate = Number(document.getElementById('activity').value);
+            let C_initial = Number(document.getElementById('indoorCo2').value);
+            let C_out = Number(document.getElementById('outdoorCo2').value);
+            let Q = Number(document.getElementById('airflow').value);
+            let T_out = Number(document.getElementById('outdoorTemp').value);
+            let T_in = Number(document.getElementById('indoorTemp').value);
+            let effInput = Number(document.getElementById('efficiency').value) / 100;
+            const measuredSupplyText = document.getElementById('measuredSupplyTemp').value.trim();
+            const hasMeasuredSupplyTemp = measuredSupplyText !== '' && Number.isFinite(Number(measuredSupplyText));
+
+            // ERV가 꺼져있을 때(미사용)는 열교환 효율을 0으로 계산
+            let eff = isErvActive ? effInput : 0;
+
+            let T_supply = hasMeasuredSupplyTemp ? Number(measuredSupplyText) : T_out + (T_in - T_out) * eff;
+            let T_exhaust = T_in - (T_in - T_out) * eff;
+
+            document.getElementById('uiReturnTemp').textContent = T_in.toFixed(1) + "°C";
+            document.getElementById('uiSupplyTemp').textContent = T_supply.toFixed(1) + "°C";
+            document.getElementById('uiOutdoorTemp').textContent = T_out.toFixed(1) + "°C";
+            document.getElementById('uiExhaustTemp').textContent = T_exhaust.toFixed(1) + "°C";
+            document.getElementById('planSupplyTemp').textContent = "급기 " + T_supply.toFixed(1) + "°C";
+            document.getElementById('planReturnTemp').textContent = "회수 " + T_in.toFixed(1) + "°C";
+            document.getElementById('planOutdoorTemp').textContent = T_out.toFixed(1) + "°C";
+            document.getElementById('planExhaustTemp').textContent = T_exhaust.toFixed(1) + "°C";
+            updateAirflowColors(T_out, T_in, T_supply, T_exhaust);
+
+            // 실측 현열 회수량: 측정 풍량 × 외기 대비 실측 급기온도 상승 × 운전시간.
+            // 요금 단가·난방기기 효율을 사용하지 않고 회수된 열에너지(kWh-열)만 계산.
+            const operatingHours = Number(document.getElementById('operatingHours').value);
+            const heatingDays = Number(document.getElementById('heatingDays').value);
+            const supplyTempRise = hasMeasuredSupplyTemp ? T_supply - T_out : null;
+            const recoveredHeatKWh = hasMeasuredSupplyTemp
+                ? (isErvActive ? Q * 0.335 * Math.max(0, supplyTempRise) * operatingHours * heatingDays / 1000 : 0)
+                : null;
+            document.getElementById('txtEnergySaved').innerText = recoveredHeatKWh === null
+                ? '급기 온도 입력 필요'
+                : `${Math.round(recoveredHeatKWh).toLocaleString()} kWh-열 / 난방기간`;
+            document.getElementById('txtTempRise').innerText = supplyTempRise === null
+                ? '외기 대비 온도 상승: -'
+                : `외기 대비 온도 상승: ${supplyTempRise > 0 ? '+' : ''}${supplyTempRise.toFixed(1)}°C`;
+
+            // 단위: 학생 CO₂ 발생량 L/h → m³/h로 한 번 변환. 농도는 ppm.
+            // 완전혼합·재실인원 일정 가정. 시작 실내농도는 입력된 측정값, 외기농도도 별도 입력.
+            let timePoints = [];
+            let dataNoVent = [];
+            let dataGeneral = [];
+            let dataErv = [];
+            const G = N * activityRate / 1000; // m³/h
+            const concentration = (hours, airflow) => {
+                if (airflow === 0) return C_initial + (G / V) * hours * 1e6;
+                const decay = Math.exp(-(airflow / V) * hours);
+                return C_out + (C_initial - C_out) * decay + (G / airflow) * (1 - decay) * 1e6;
+            };
+
+            for (let t = 0; t <= 60; t += 5) {
+                const hrs = t / 60;
+                timePoints.push(t);
+                dataNoVent.push(Math.round(concentration(hrs, 0)));
+                dataGeneral.push(Math.round(concentration(hrs, Q)));
+                // ERV는 열을 회수하지만 같은 외기 풍량이면 CO₂ 제거량은 일반 환기와 같음.
+                dataErv.push(Math.round(concentration(hrs, Q)));
+            }
+
+            const lastIndex = timePoints.length - 1;
+            document.getElementById('txtCo2No').innerText = dataNoVent[lastIndex] + " ppm";
+            document.getElementById('txtCo2General').innerText = dataGeneral[lastIndex] + " ppm";
+            document.getElementById('txtCo2Vent').innerText = dataErv[lastIndex] + " ppm";
+
+            if (generalChart) generalChart.destroy();
+            if (ervChart) ervChart.destroy();
+
+            const generalAirTemp = timePoints.map(minutes => T_out + (T_in - T_out) * Math.exp(-(Q / V) * (minutes / 60)));
+            const ervAirTemp = timePoints.map(minutes => T_supply + (T_in - T_supply) * Math.exp(-(Q / V) * (minutes / 60)));
+
+            function makeScenarioChart(canvasId, scenario, co2Values, temperatureValues, color) {
+                const datasets = [
+                    { label: `${scenario} CO₂`, data: co2Values.map((y, i) => ({ x: timePoints[i], y })), yAxisID: 'y', borderColor: color, backgroundColor: color + '18', borderWidth: 3, pointRadius: 2, fill: false, tension: 0.25 },
+                    { label: '교실 공기 온도 (간이 추정)', data: temperatureValues.map((y, i) => ({ x: timePoints[i], y: Number(y.toFixed(2)) })), yAxisID: 'yTemp', borderColor: '#F97316', backgroundColor: 'rgba(249, 115, 22, 0.08)', borderWidth: 3, pointRadius: 2, borderDash: [7, 4], fill: false, tension: 0.25 }
+                ];
+                if (measuredPoints.length) datasets.push({ label: '실측 CO₂', data: measuredPoints, yAxisID: 'y', borderColor: '#0F172A', backgroundColor: '#FFFFFF', borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, pointStyle: 'circle', fill: false, tension: 0, spanGaps: false });
+                return new Chart(document.getElementById(canvasId).getContext('2d'), {
+                    type: 'line', data: { datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Plus Jakarta Sans', size: 11, weight: '600' } } },
+                            tooltip: { callbacks: { label: context => context.dataset.yAxisID === 'yTemp' ? `${context.dataset.label}: ${Number(context.parsed.y).toFixed(1)}°C` : `${context.dataset.label}: ${Math.round(context.parsed.y).toLocaleString()} ppm` } }
+                        },
+                        scales: {
+                            y: { position: 'left', title: { display: true, text: 'CO₂ (ppm)', font: { family: 'Plus Jakarta Sans', size: 12, weight: '600' } }, grid: { color: '#F1F5F9' }, ticks: { font: { family: 'Plus Jakarta Sans', size: 10 } } },
+                            yTemp: { position: 'right', title: { display: true, text: '공기 온도 (°C)', font: { family: 'Plus Jakarta Sans', size: 12, weight: '600' } }, grid: { drawOnChartArea: false }, ticks: { font: { family: 'Plus Jakarta Sans', size: 10 }, callback: value => `${Number(value).toFixed(1)}°` } },
+                            x: { type: 'linear', min: 0, max: 60, grid: { display: false }, title: { display: true, text: '경과 시간 (분)', font: { family: 'Plus Jakarta Sans', size: 12, weight: '600' } }, ticks: { stepSize: 10, font: { family: 'Plus Jakarta Sans', size: 10 }, callback: value => `${value}분` } }
+                        }
+                    }
+                });
+            }
+            generalChart = makeScenarioChart('generalChart', '일반 환기', dataGeneral, generalAirTemp, '#4318FF');
+            ervChart = makeScenarioChart('ervChart', 'ERV 환기', dataErv, ervAirTemp, '#05CD99');
+
+            const school = document.getElementById('schoolName').value.trim() || '학교/교실';
+            const lastMeasured = measuredPoints[measuredPoints.length - 1];
+            const meanAbsError = measuredPoints.length
+                ? measuredPoints.reduce((sum, point) => sum + Math.abs(point.y - concentration(point.x / 60, Q)), 0) / measuredPoints.length
+                : null;
+            const measurementText = lastMeasured
+                ? `실측 ${measuredPoints.length}개 · 마지막 ${lastMeasured.x}분 ${lastMeasured.y}ppm · 같은 시점 모델 ${Math.round(concentration(lastMeasured.x / 60, Q))}ppm · 평균 절대 차이 ${Math.round(meanAbsError)}ppm`
+                : `실측 CSV 미등록 · 시작 실내 농도 ${C_initial}ppm에서 예측`;
+            document.getElementById('reportGeneratedAt').textContent = `생성: ${new Date().toLocaleString('ko-KR')}`;
+            document.getElementById('reportLead').textContent = `${school} | ${measurementText}`;
+            document.getElementById('reportNoVent').textContent = `${dataNoVent[lastIndex].toLocaleString()} ppm`;
+            document.getElementById('reportGeneral').textContent = `${dataGeneral[lastIndex].toLocaleString()} ppm`;
+            document.getElementById('reportErv').textContent = `${dataErv[lastIndex].toLocaleString()} ppm`;
+            document.getElementById('reportHeatEnergy').textContent = recoveredHeatKWh === null
+                ? '실측값 미입력'
+                : `${Math.round(recoveredHeatKWh).toLocaleString()} kWh-열`;
+            document.getElementById('reportGeneralChartImage').src = generalChart.toBase64Image();
+            document.getElementById('reportErvChartImage').src = ervChart.toBase64Image();
+            setReportInputs([
+                ['실측 교실 크기', '가로 7.36m × 세로 8.66m × 높이 2.70m (172.1m³)'],
+                ['책상 / 창문 배치', '책상 65×45cm · 3분단 짝배치 · 교탁 85×55cm · 창문 75×150cm, 위쪽 2개/아래쪽 2개 · 가운데 기둥'],
+                ['재실 인원 / 활동량', `${N}명 / ${document.getElementById('activity').selectedOptions[0].text}`],
+                ['교실 용적 / 환기 풍량', `${V}m³ / ${Q}m³/h`],
+                ['실내 시작 / 외기 CO₂', `${C_initial} / ${C_out} ppm`],
+                ['실내 / 외기 온도', `${T_in} / ${T_out} °C`],
+                ['열회수 효율 / 장치 모드', `${(effInput * 100).toFixed(0)}% / ${isErvActive ? 'ERV 열회수' : '바이패스'}`],
+                ['하루 운전 / 난방일수', `${operatingHours}시간 / ${heatingDays}일`],
+                ['실측 환기 풍량 / ERV 급기온도', `${Q}m³/h / ${hasMeasuredSupplyTemp ? `${T_supply}°C` : '미입력'}`],
+                ['실측 데이터', measuredPoints.length ? `${measuredPoints.length}개 지점` : 'CSV 미등록']
+            ]);
+            document.getElementById('reportAssumptions').textContent = `모델 가정: 완전혼합, 재실 인원·환기 풍량 일정, 재실자 CO₂ 발생량은 선택한 활동량 값을 사용합니다. CO₂ 예측은 외기 환기로 제거되는 농도를 계산하며, 같은 풍량의 일반 환기와 ERV는 같은 결과입니다. 회수 열에너지는 측정 환기 풍량 × (ERV 실측 급기온도 − 외기온도) × 0.335 Wh/m³·K × 운전시간 × 난방일수 ÷ 1000으로 계산한 열량입니다. 급기온도를 입력하지 않으면 회수 열량을 표시하지 않습니다. 에너지 요금과 난방기기 효율을 받지 않으므로 원 단위 난방비 절감액은 계산하지 않습니다. 실측과 모델을 비교할 때 재실 인원·활동·환기 조건이 다르면 차이가 생길 수 있습니다. 온도선은 환기 항만 고려한 공기 자체의 간이 예측이며, 벽체 열저장과 난방기 제어 등은 반영하지 않습니다. 참고 근거는 EnergyPlus 구역 공기 열수지, ASHRAE 환기 열부하·열회수 효율, 미국 DOE의 ERV 프로토타입 실험 자료입니다. DBpia의 2024년 용도프로필 연구는 재실자·기기 내부발열량을 분석 변수로 다루지만, 공개 요약에는 학생 1인당 발열 수치가 없어 이 계산에는 반영하지 않았습니다.`;
+            document.getElementById('reportMeasurementPlan').textContent = '실측 검증 계획: 도입 전후 비슷한 시간대와 재실 조건에서 CO₂·실내 온도·습도, 인원, 창문 개폐, 환기 설정/풍량을 함께 기록하세요. 에너지 사용량은 가능한 한 같은 난방 설정과 기상 조건의 기간끼리 비교하고, 소음·필터 관리도 확인하세요.';
+        }
+
+        document.getElementById('measurementFile').addEventListener('change', loadMeasurements);
+        window.onload = () => {
+            buildRoomAirflow();
+            calculate();
+        };
+    </script>
+</body>
+</html>
+
